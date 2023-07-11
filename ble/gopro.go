@@ -27,6 +27,7 @@ func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
 	filter := func(a goble.Advertisement) bool {
 		svcs := a.Services()
 		for _, svc := range svcs {
+			log.Println(svc)
 			if svc.Equal(serviceUUIDControlAndQuery) {
 				return true
 			}
