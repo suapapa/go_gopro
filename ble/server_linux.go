@@ -7,7 +7,7 @@ import (
 	"github.com/go-ble/ble/linux"
 )
 
-func NewPlatformDeviceWithName(name string, opts ...goble.Option) (goble.Device, error) {
+func newPlatformDeviceWithName(name string, opts ...goble.Option) (goble.Device, error) {
 	return linux.NewDeviceWithNameAndHandler(name, nil, opts...)
 }
 

@@ -15,7 +15,14 @@ type GoPro struct {
 	p   *goble.Profile
 }
 
-func ScanGoPro() (*GoPro, error) {
+func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
+	dev, err := newDevice(opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new device")
+	}
+
+	goble.SetDefaultDevice(dev)
+
 	ctx := goble.WithSigHandler(context.WithTimeout(context.Background(), 5*time.Second))
 	filter := func(a goble.Advertisement) bool {
 		svcs := a.Services()

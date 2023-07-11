@@ -3,5 +3,5 @@ package ble
 import goble "github.com/go-ble/ble"
 
 func NewDeviceWithName(name string, opts ...goble.Option) (goble.Device, error) {
-	return NewPlatformDeviceWithName(name, opts...)
+	return newPlatformDeviceWithName(name, opts...)
 }
