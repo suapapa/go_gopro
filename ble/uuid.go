@@ -9,11 +9,11 @@ import (
 
 var (
 	// services and characteristics
-	serviceGoProWifiAccessPorint = gpUUID("GP-0001")
-	characteristicWifiAPSSID     = gpUUID("GP-0002") // Read / Write
-	characteristicWifiAPPassword = gpUUID("GP-0003") // Read / Write
-	characteristicWifiAPPower    = gpUUID("GP-0004") // Write
-	characteristicWifiAPState    = gpUUID("GP-0004") // Read / Indicate
+	serviceGoProWifiAccessPoint           = gpUUID("GP-0001")
+	characteristicWifiAccessPointSSID     = gpUUID("GP-0002") // Read / Write
+	characteristicWifiAccessPointPassword = gpUUID("GP-0003") // Read / Write
+	characteristicWifiAccessPointPower    = gpUUID("GP-0004") // Write
+	characteristicWifiAccessPointState    = gpUUID("GP-0004") // Read / Indicate
 
 	serviceGoProCamaraManagement            = gpUUID("GP-0090")
 	characteristicNetworkManagementCommand  = gpUUID("GP-0091") // Write
@@ -32,3 +32,20 @@ func gpUUID(uuid string) goble.UUID {
 	uuid = strings.Replace(uuid, "GP-", "", -1)
 	return goble.MustParse(fmt.Sprintf("b5f9%s-aa8d-11e3-9046-0002a5d5c51b", uuid))
 }
+
+type Characteristic byte
+
+const (
+	WifiAccessPointSSID Characteristic = iota
+	WifiAccessPointPassword
+	WifiAccessPointPower
+	WifiAccessPointState
+	NetworkManagementCommand
+	NetworkManagementResponse
+	Command
+	CommandResponse
+	Setting
+	SettingResponse
+	Query
+	QueryResponse
+)

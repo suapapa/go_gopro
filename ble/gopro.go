@@ -2,7 +2,6 @@ package ble
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 type GoPro struct {
 	cln goble.Client
 	p   *goble.Profile
+	chs map[Characteristic]*goble.Characteristic
 }
 
 func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
@@ -23,7 +23,7 @@ func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
 
 	goble.SetDefaultDevice(dev)
 
-	ctx := goble.WithSigHandler(context.WithTimeout(context.Background(), 5*time.Second))
+	ctx := goble.WithSigHandler(context.WithTimeout(context.Background(), 10*time.Second))
 	filter := func(a goble.Advertisement) bool {
 		svcs := a.Services()
 		for _, svc := range svcs {
@@ -45,10 +45,14 @@ func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
 		return nil, errors.Wrap(err, "failed to discover profile")
 	}
 
-	return &GoPro{
+	ret := &GoPro{
 		cln: cln,
 		p:   p,
-	}, nil
+		chs: make(map[Characteristic]*goble.Characteristic),
+	}
+	ret.makeCharacteristicMap()
+
+	return ret, nil
 }
 
 func (g *GoPro) Close() error {
@@ -62,12 +66,48 @@ func (g *GoPro) Close() error {
 	return nil
 }
 
-func (g *GoPro) String() string {
-	return explore(g.cln, g.p)
+// func (g *GoPro) String() string {
+// 	return explore(g.cln, g.p)
+// }
+
+func (g *GoPro) makeCharacteristicMap() {
+	for _, s := range g.p.Services {
+		for _, c := range s.Characteristics {
+			switch {
+			case c.UUID.Equal(characteristicWifiAccessPointSSID):
+				g.chs[WifiAccessPointSSID] = c
+			case c.UUID.Equal(characteristicWifiAccessPointPassword):
+				g.chs[WifiAccessPointPassword] = c
+			case c.UUID.Equal(characteristicWifiAccessPointPower):
+				g.chs[WifiAccessPointPower] = c
+			case c.UUID.Equal(characteristicWifiAccessPointState):
+				g.chs[WifiAccessPointState] = c
+
+			case c.UUID.Equal(characteristicNetworkManagementCommand):
+				g.chs[NetworkManagementCommand] = c
+			case c.UUID.Equal(characteristicNetworkManagementResponse):
+				g.chs[NetworkManagementResponse] = c
+
+			case c.UUID.Equal(characteristicCommand):
+				g.chs[Command] = c
+			case c.UUID.Equal(characteristicCommandResponse):
+				g.chs[CommandResponse] = c
+			case c.UUID.Equal(characteristicSetting):
+				g.chs[Setting] = c
+			case c.UUID.Equal(characteristicSettingResponse):
+				g.chs[SettingResponse] = c
+			case c.UUID.Equal(characteristicQuery):
+				g.chs[Query] = c
+			case c.UUID.Equal(characteristicQueryResponse):
+				g.chs[QueryResponse] = c
+			}
+
+		}
+	}
 }
 
 // ---
-
+/*
 func explore(cln goble.Client, p *goble.Profile) string {
 	var ret string
 	for _, s := range p.Services {
@@ -160,3 +200,4 @@ func propString(p goble.Property) string {
 	}
 	return s
 }
+*/
