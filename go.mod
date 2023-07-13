@@ -4,7 +4,10 @@ go 1.20
 
 require github.com/pkg/errors v0.9.1
 
-require github.com/go-ble/ble v0.0.0-20230130210458-dd4b07d15402
+require (
+	github.com/go-ble/ble v0.0.0-20230130210458-dd4b07d15402
+	google.golang.org/protobuf v1.31.0
+)
 
 require (
 	github.com/mattn/go-colorable v0.1.6 // indirect

@@ -8,6 +8,7 @@ Defines the structure of protobuf messages for enabling and disabling Turbo Tran
 syntax="proto2";
 package open_gopro;
 
+option go_package = "github.com/suapapa/go_gopro/open_gopro";
 
 message RequestSetTurboActive {
     required bool active = 1; // Enable or disable Turbo Transfer feature

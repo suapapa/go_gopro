@@ -8,6 +8,7 @@ Defines the structure of protobuf message containing generic response to a comma
 syntax="proto2";
 package open_gopro;
 
+option go_package = "github.com/suapapa/go_gopro/open_gopro";
 
 enum EnumResultGeneric {
     RESULT_UNKNOWN                = 0;

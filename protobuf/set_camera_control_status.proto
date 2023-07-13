@@ -8,6 +8,7 @@ Defines the structure of protobuf messages for setting camera control status
 syntax="proto2";
 package open_gopro;
 
+option go_package = "github.com/suapapa/go_gopro/open_gopro";
 
 enum EnumCameraControlStatus {
     CAMERA_IDLE             = 0;

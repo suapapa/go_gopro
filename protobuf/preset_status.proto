@@ -8,6 +8,7 @@ Defines the structure of protobuf message received from camera containing preset
 syntax="proto2";
 package open_gopro;
 
+option go_package = "github.com/suapapa/go_gopro/open_gopro";
 
 enum EnumFlatMode {
     FLAT_MODE_UNKNOWN              = -1;

@@ -9,6 +9,8 @@ syntax="proto2";
 package open_gopro;
 import "response_generic.proto";
 
+option go_package = "github.com/suapapa/go_gopro/open_gopro";
+
 enum EnumNetworkOwner {
     DEPRECATED_1 = 0x00;
     DEPRECATED_2 = 0x01;
