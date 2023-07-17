@@ -49,3 +49,40 @@ const (
 	Query
 	QueryResponse
 )
+
+func makeCharacteristicMap(p *goble.Profile) map[Characteristic]*goble.Characteristic {
+	chrs := make(map[Characteristic]*goble.Characteristic)
+	for _, s := range p.Services {
+		for _, c := range s.Characteristics {
+			switch {
+			case c.UUID.Equal(characteristicWifiAccessPointSSID):
+				chrs[WifiAccessPointSSID] = c
+			case c.UUID.Equal(characteristicWifiAccessPointPassword):
+				chrs[WifiAccessPointPassword] = c
+			case c.UUID.Equal(characteristicWifiAccessPointPower):
+				chrs[WifiAccessPointPower] = c
+			case c.UUID.Equal(characteristicWifiAccessPointState):
+				chrs[WifiAccessPointState] = c
+
+			case c.UUID.Equal(characteristicNetworkManagementCommand):
+				chrs[NetworkManagementCommand] = c
+			case c.UUID.Equal(characteristicNetworkManagementResponse):
+				chrs[NetworkManagementResponse] = c
+
+			case c.UUID.Equal(characteristicCommand):
+				chrs[Command] = c
+			case c.UUID.Equal(characteristicCommandResponse):
+				chrs[CommandResponse] = c
+			case c.UUID.Equal(characteristicSetting):
+				chrs[Setting] = c
+			case c.UUID.Equal(characteristicSettingResponse):
+				chrs[SettingResponse] = c
+			case c.UUID.Equal(characteristicQuery):
+				chrs[Query] = c
+			case c.UUID.Equal(characteristicQueryResponse):
+				chrs[QueryResponse] = c
+			}
+		}
+	}
+	return chrs
+}

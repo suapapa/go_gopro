@@ -1,6 +1,7 @@
 package ble
 
 import (
+	"bytes"
 	"context"
 	"log"
 	"time"
@@ -48,62 +49,73 @@ func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
 	ret := &GoPro{
 		cln: cln,
 		p:   p,
-		chs: make(map[Characteristic]*goble.Characteristic),
+		chs: makeCharacteristicMap(p),
 	}
-	ret.makeCharacteristicMap()
 
 	return ret, nil
 }
 
 func (g *GoPro) Close() error {
-	exitCh := g.cln.Disconnected()
+	// Unsubscribe from notifications
+	exitC := g.cln.Disconnected()
 	err := g.cln.CancelConnection()
 	if err != nil {
 		return errors.Wrap(err, "failed to cancel connection")
 	}
-	<-exitCh
+	<-exitC
 
 	return nil
 }
 
-// func (g *GoPro) String() string {
-// 	return explore(g.cln, g.p)
-// }
-
-func (g *GoPro) makeCharacteristicMap() {
-	for _, s := range g.p.Services {
-		for _, c := range s.Characteristics {
-			switch {
-			case c.UUID.Equal(characteristicWifiAccessPointSSID):
-				g.chs[WifiAccessPointSSID] = c
-			case c.UUID.Equal(characteristicWifiAccessPointPassword):
-				g.chs[WifiAccessPointPassword] = c
-			case c.UUID.Equal(characteristicWifiAccessPointPower):
-				g.chs[WifiAccessPointPower] = c
-			case c.UUID.Equal(characteristicWifiAccessPointState):
-				g.chs[WifiAccessPointState] = c
-
-			case c.UUID.Equal(characteristicNetworkManagementCommand):
-				g.chs[NetworkManagementCommand] = c
-			case c.UUID.Equal(characteristicNetworkManagementResponse):
-				g.chs[NetworkManagementResponse] = c
-
-			case c.UUID.Equal(characteristicCommand):
-				g.chs[Command] = c
-			case c.UUID.Equal(characteristicCommandResponse):
-				g.chs[CommandResponse] = c
-			case c.UUID.Equal(characteristicSetting):
-				g.chs[Setting] = c
-			case c.UUID.Equal(characteristicSettingResponse):
-				g.chs[SettingResponse] = c
-			case c.UUID.Equal(characteristicQuery):
-				g.chs[Query] = c
-			case c.UUID.Equal(characteristicQueryResponse):
-				g.chs[QueryResponse] = c
-			}
-
-		}
+func (g *GoPro) KeepAlive() error {
+	chrReq, err := g.GetCharacteristic(Setting)
+	if err != nil {
+		return errors.Wrap(err, "failed to get characteristic")
 	}
+	chrResp, err := g.GetCharacteristic(SettingResponse)
+	if err != nil {
+		return errors.Wrap(err, "failed to get characteristic")
+	}
+
+	doneC := make(chan error)
+	// response will be sent to GP-0075, characteristicSettingResponse
+	notiHandler := func(req []byte) {
+		if bytes.Equal(req, []byte{0x02, 0x5B, 0x00}) {
+			doneC <- nil
+			return
+		}
+		doneC <- errors.Errorf("unexpected response: %v", req)
+	}
+	err = g.cln.Subscribe(chrResp, false, notiHandler)
+	if err != nil {
+		return errors.Wrap(err, "failed to subscribe to characteristic")
+	}
+	defer g.cln.Unsubscribe(chrResp, false)
+
+	// send followin payload to GP-0074, characteristicSetting
+	p := []byte{0x03, 0x5b, 0x01, 0x42}
+	err = g.cln.WriteCharacteristic(chrReq, p, false)
+	if err != nil {
+		return errors.Wrap(err, "failed to write characteristic")
+	}
+
+	select {
+	case err := <-doneC:
+		if err != nil {
+			return errors.Wrap(err, "failed to receive notification")
+		}
+	case <-time.After(5 * time.Second):
+		return errors.New("timeout")
+	}
+	return nil
+}
+
+func (g *GoPro) GetCharacteristic(c Characteristic) (*goble.Characteristic, error) {
+	ch, ok := g.chs[c]
+	if !ok {
+		return nil, errors.Errorf("characteristic %d not found", c)
+	}
+	return ch, nil
 }
 
 // ---
