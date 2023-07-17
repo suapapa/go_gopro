@@ -1,5 +1,6 @@
 package ble
 
+// protobuf feature, action, response ids
 const (
 	// Newtwork Management actions will be sent to GP-0091 and
 	// responses will be received from GP-0092
@@ -38,3 +39,36 @@ const (
 	responseGetLiveStreamStatus      = 0xF4
 	responseAsyncGetLiveStreamStatus = 0xF5
 )
+
+func isProtobufMsg(msg []byte) bool {
+	if len(msg) < 2 {
+		return false
+	}
+	feature, action := msg[0], msg[1]
+	switch feature {
+	case featureNetworkManagement:
+		switch action {
+		case responseStartScan, responseAsyncStartScan,
+			responseGetApEntries,
+			responseConnect, responseAsyncConnect,
+			responseConnectNew:
+			return true
+		}
+	case featureCommand:
+		switch action {
+		case responseSetCameraContolStatus,
+			responseSetTurboActive,
+			responseReleaseNetwork,
+			responseSetLiveStream:
+			return true
+		}
+	case featureQuery:
+		switch action {
+		case responseGetPresetStatus, responseAsyncGetPresetStatus,
+			responseGetLiveStreamStatus, responseAsyncGetLiveStreamStatus:
+			return true
+		}
+	}
+
+	return false
+}

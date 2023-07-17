@@ -49,7 +49,8 @@ func (p packetHeaderByte1) Parse() (start bool, msgType byte, low byte) {
 	return
 }
 
-func ReadPacket(r io.Reader) ([]byte, error) {
+// ReadPackets reads a packets from r and returns the payload.
+func ReadPackets(r io.Reader) ([]byte, error) {
 	var packet []byte
 	buffer := make([]byte, 20) // 20 byte is max length of BLE packet
 
