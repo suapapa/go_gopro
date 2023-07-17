@@ -88,3 +88,63 @@ func ReadPackets(r io.Reader) ([]byte, error) {
 		}
 	}
 }
+
+// MakePackets makes gopro ble packets from payload.
+func MakePackets(payload []byte) ([][]byte, error) {
+	if len(payload) > 65535 {
+		return nil, errors.New("payload is too long")
+	}
+
+	var firstPacketAppended bool
+	var continuationCounter byte
+	var packets [][]byte
+
+	for len(payload) > 0 {
+		var packet []byte
+		if !firstPacketAppended {
+			lenPayload := len(payload)
+			var lenFirstPayload int
+			if lenPayload <= 0b0001_1111 {
+				lenFirstPayload = min(19, lenPayload)
+				packet = append(packet, packetHeaderMessageType5bitLength|byte(lenPayload))
+			} else if len(payload) <= 0b0001_1111_1111_1111 {
+				lenFirstPayload = min(18, lenPayload)
+				upperLen := byte(lenPayload >> 8)
+				lowerLen := byte(lenPayload)
+				packet = append(packet, packetHeaderMessageType13bitLength|upperLen, lowerLen)
+			} else { // 65535
+				lenFirstPayload = min(17, lenPayload)
+				upperLen := byte(lenPayload >> 8)
+				lowerLen := byte(lenPayload)
+				packet = append(packet, packetHeaderMessageType16bitLength, upperLen, lowerLen)
+			}
+			packet = append(packet, payload[:lenFirstPayload]...)
+			payload = payload[lenFirstPayload:]
+			firstPacketAppended = true
+
+			packets = append(packets, packet)
+			continue
+		}
+		if continuationCounter >= packetHeaderContinuationCounterMask {
+			return nil, errors.New("too many packets")
+		}
+
+		continuationHeader := packetHeaderContinuationCounterMask & continuationCounter
+		appendPayloadLen := min(19, len(payload))
+		packet = append(packet, continuationHeader)
+		packet = append(packet, payload[:appendPayloadLen]...)
+		payload = payload[appendPayloadLen:]
+		continuationCounter++
+
+		packets = append(packets, packet)
+	}
+
+	return packets, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
