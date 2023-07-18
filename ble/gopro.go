@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -87,8 +88,6 @@ func (g *GoPro) SetShutter(on bool) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to make tlv")
 	}
-	// TODO: make tlv resp with helper
-	// expectedRespPayload := []byte{0x02, 0x01, 0x00}
 	expectedRespPayload := makeTlvResp(cmdSetShutter, cmdRespSuccess, nil)
 
 	return g.writePayload(
@@ -100,7 +99,7 @@ func (g *GoPro) SetShutter(on bool) error {
 
 func (g *GoPro) writePayload(
 	reqC, respC Characteristic,
-	reqPayload, respPayload []byte,
+	reqPayload, expectedRespPayload []byte,
 	timeout time.Duration,
 ) error {
 	chrReq, err := g.getChr(reqC)
@@ -113,15 +112,23 @@ func (g *GoPro) writePayload(
 	}
 
 	doneCh := make(chan error)
-	// TODO: handle multiple responses
-	respPayload = append([]byte{byte(len(respPayload))}, respPayload...)
-
-	notiHandler := func(req []byte) {
-		if bytes.Equal(req, respPayload) {
-			doneCh <- nil
+	pr, pw := io.Pipe()
+	go func() {
+		defer pw.Close()
+		resp, err := readPackets(pr)
+		if err != nil {
+			doneCh <- errors.Wrap(err, "failed to read packets")
 			return
 		}
-		doneCh <- errors.Errorf("unexpected response: %v", req)
+		if bytes.Compare(resp, expectedRespPayload) != 0 {
+			doneCh <- fmt.Errorf("unexpected response: %x", resp)
+			return
+		}
+		doneCh <- nil
+	}()
+
+	notiHandler := func(req []byte) {
+		pw.Write(req)
 	}
 	err = g.cln.Subscribe(chrResp, false, notiHandler)
 	if err != nil {
