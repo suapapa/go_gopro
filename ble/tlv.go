@@ -4,31 +4,31 @@ import "fmt"
 
 // tlv command ids
 const (
-	commandSetShutter         = 0x01
-	commandSleep              = 0x05
-	commandSetDateTime        = 0x0D
-	commandGetDateTime        = 0x0E
-	commandSetLocalDataTime   = 0x0F
-	commandGetLocalDataTime   = 0x10
-	commandSetLivestreamMode  = 0x15
-	commandApControl          = 0x17
-	commandMediaHiLightMoment = 0x18
-	commandGetHardwareInfo    = 0x3C
-	commandPresetLoadGroup    = 0x3E
-	commandPresetLoad         = 0x40
-	commandAnalytics          = 0x50
-	commandOpenGoPro          = 0x51
+	cmdSetShutter         = 0x01
+	cmdSleep              = 0x05
+	cmdSetDateTime        = 0x0D
+	cmdGetDateTime        = 0x0E
+	cmdSetLocalDataTime   = 0x0F
+	cmdGetLocalDataTime   = 0x10
+	cmdSetLivestreamMode  = 0x15
+	cmdApControl          = 0x17
+	cmdMediaHiLightMoment = 0x18
+	cmdGetHardwareInfo    = 0x3C
+	cmdPresetLoadGroup    = 0x3E
+	cmdPresetLoad         = 0x40
+	cmdAnalytics          = 0x50
+	cmdOpenGoPro          = 0x51
 
-	commandRespSuccess          = 0
-	commandRespError            = 1
-	commandRespInvalidParameter = 2
+	cmdRespSuccess          = 0
+	cmdRespError            = 1
+	cmdRespInvalidParameter = 2
 )
 
-func makeTlvCommand(cmd byte) []byte {
+func makeTlvCmd(cmd byte) []byte {
 	return []byte{cmd}
 }
 
-func makeTlvCommandWithParam(cmd byte, param []byte) ([]byte, error) {
+func makeTlvCmdWithParam(cmd byte, param []byte) ([]byte, error) {
 	if len(param) > 255 {
 		return nil, fmt.Errorf("tlv payload too long")
 	}

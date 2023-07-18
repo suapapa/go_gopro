@@ -3,6 +3,7 @@ package ble
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -68,11 +69,11 @@ func (g *GoPro) Close() error {
 }
 
 func (g *GoPro) KeepAlive() error {
-	chrReq, err := g.GetCharacteristic(Setting)
+	chrReq, err := g.getChr(Setting)
 	if err != nil {
 		return errors.Wrap(err, "failed to get chr")
 	}
-	chrResp, err := g.GetCharacteristic(SettingResponse)
+	chrResp, err := g.getChr(SettingResponse)
 	if err != nil {
 		return errors.Wrap(err, "failed to get chr")
 	}
@@ -110,10 +111,62 @@ func (g *GoPro) KeepAlive() error {
 	return nil
 }
 
-func (g *GoPro) GetCharacteristic(c Characteristic) (*goble.Characteristic, error) {
+func (g *GoPro) SetShutter(on bool) error {
+	chrReq, err := g.getChr(Command)
+	if err != nil {
+		return errors.Wrap(err, "failed to get chr")
+	}
+	chrResp, err := g.getChr(CommandResponse)
+	if err != nil {
+		return errors.Wrap(err, "failed to get chr")
+	}
+
+	doneC := make(chan error)
+	// response will be sent to GP-0075, chrSettingResponse
+	notiHandler := func(req []byte) {
+		// TODO: make tlv from command id
+		if bytes.Equal(req, []byte{0x02, 0x01, 0x00}) {
+			doneC <- nil
+			return
+		}
+		doneC <- errors.Errorf("unexpected response: %v", req)
+	}
+	err = g.cln.Subscribe(chrResp, false, notiHandler)
+	if err != nil {
+		return errors.Wrap(err, "failed to subscribe to chr")
+	}
+	defer g.cln.Unsubscribe(chrResp, false)
+
+	var param []byte
+	if on {
+		param = []byte{0x01}
+	} else {
+		param = []byte{0x00}
+	}
+	p, err := makeTlvCmdWithParam(cmdSetShutter, param)
+	if err != nil {
+		return errors.Wrap(err, "failed to make tlv")
+	}
+	err = g.cln.WriteCharacteristic(chrReq, p, false)
+	if err != nil {
+		return errors.Wrap(err, "failed to write chr")
+	}
+
+	select {
+	case err := <-doneC:
+		if err != nil {
+			return errors.Wrap(err, "failed to receive notification")
+		}
+	case <-time.After(5 * time.Second):
+		return errors.New("timeout")
+	}
+	return nil
+}
+
+func (g *GoPro) getChr(c Characteristic) (*goble.Characteristic, error) {
 	ch, ok := g.chs[c]
 	if !ok {
-		return nil, errors.Errorf("chr %d not found", c)
+		return nil, fmt.Errorf("chr %d not found", c)
 	}
 	return ch, nil
 }
