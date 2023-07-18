@@ -2,7 +2,7 @@ package ble
 
 import "fmt"
 
-// tlv command id
+// tlv command ids
 const (
 	commandSetShutter         = 0x01
 	commandSleep              = 0x05
@@ -24,9 +24,13 @@ const (
 	commandRespInvalidParameter = 2
 )
 
-func makeTlvCommand(cmdID byte, payload []byte) ([]byte, error) {
-	if len(payload) > 255 {
+func makeTlvCommand(cmd byte) []byte {
+	return []byte{cmd}
+}
+
+func makeTlvCommandWithParam(cmd byte, param []byte) ([]byte, error) {
+	if len(param) > 255 {
 		return nil, fmt.Errorf("tlv payload too long")
 	}
-	return append([]byte{cmdID, byte(len(payload))}, payload...), nil
+	return append([]byte{cmd, byte(len(param))}, param...), nil
 }
