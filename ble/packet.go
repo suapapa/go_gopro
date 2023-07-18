@@ -90,7 +90,7 @@ func ReadPackets(r io.Reader) ([]byte, error) {
 }
 
 // MakePackets makes gopro ble packets from payload.
-func MakePackets(payload []byte) ([][]byte, error) {
+func makePackets(payload []byte) ([][]byte, error) {
 	if len(payload) > 65535 {
 		return nil, errors.New("payload is too long")
 	}
