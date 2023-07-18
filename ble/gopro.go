@@ -71,7 +71,7 @@ func (g *GoPro) Close() error {
 func (g *GoPro) KeepAlive() error {
 	return g.writePayload(
 		Setting, SettingResponse,
-		[]byte{0x03, 0x5b, 0x01, 0x42}, []byte{0x02, 0x5b, 0x00},
+		[]byte{0x5b, 0x01, 0x42}, []byte{0x5b, 0x00},
 		5*time.Second,
 	)
 }
@@ -88,7 +88,8 @@ func (g *GoPro) SetShutter(on bool) error {
 		return errors.Wrap(err, "failed to make tlv")
 	}
 	// TODO: make tlv resp with helper
-	expectedRespPayload := []byte{0x02, 0x01, 0x00}
+	// expectedRespPayload := []byte{0x02, 0x01, 0x00}
+	expectedRespPayload := makeTlvResp(cmdSetShutter, cmdRespSuccess, nil)
 
 	return g.writePayload(
 		Command, CommandResponse,
@@ -113,6 +114,8 @@ func (g *GoPro) writePayload(
 
 	doneCh := make(chan error)
 	// TODO: handle multiple responses
+	respPayload = append([]byte{byte(len(respPayload))}, respPayload...)
+
 	notiHandler := func(req []byte) {
 		if bytes.Equal(req, respPayload) {
 			doneCh <- nil
@@ -152,7 +155,7 @@ func (g *GoPro) writePayload(
 func (g *GoPro) getChr(c Characteristic) (*goble.Characteristic, error) {
 	ch, ok := g.chs[c]
 	if !ok {
-		return nil, fmt.Errorf("chr %d not found", c)
+		return nil, fmt.Errorf("chr %s not found", c)
 	}
 	return ch, nil
 }

@@ -34,3 +34,11 @@ func makeTlvCmdWithParam(cmd byte, param []byte) ([]byte, error) {
 	}
 	return append([]byte{cmd, byte(len(param))}, param...), nil
 }
+
+func makeTlvResp(cmd byte, respCode byte, resp []byte) []byte {
+	ret := []byte{cmd, respCode}
+	if resp != nil {
+		ret = append(ret, resp...)
+	}
+	return ret
+}
