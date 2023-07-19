@@ -23,7 +23,7 @@ func time2Bytes(t time.Time) []byte {
 }
 
 func bytes2Time(b []byte) (time.Time, error) {
-	if len(b) != 7 {
+	if len(b) < 7 {
 		return time.Time{}, fmt.Errorf("invalid time bytes")
 	}
 

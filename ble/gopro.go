@@ -69,9 +69,10 @@ func (g *GoPro) Close() error {
 	return nil
 }
 
+// KeepAlive sends a keep alive message to the GoPro.
+// The best practice to prevent the GoPro from sleeping is to send a keep alive message every 3 seconds.
 func (g *GoPro) KeepAlive() error {
 	reqPayload := []byte{0x5b, 0x01, 0x42}
-	respPayload := []byte{0x5b, 0x00}
 	resp, err := g.doRequest(
 		Setting, SettingResponse,
 		reqPayload,
@@ -80,12 +81,15 @@ func (g *GoPro) KeepAlive() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to request")
 	}
-	if bytes.Compare(resp, respPayload) != 0 {
+
+	expectedRespPayload := []byte{0x5b, 0x00}
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 	return nil
 }
 
+// SetShutter sets the shutter on or off.
 func (g *GoPro) SetShutter(on bool) error {
 	var param []byte
 	if on {
@@ -97,7 +101,6 @@ func (g *GoPro) SetShutter(on bool) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to make tlv")
 	}
-	expectedRespPayload := makeTlvResp(cmdSetShutter, cmdRespSuccess, nil)
 
 	resp, err := g.doRequest(
 		Command, CommandResponse,
@@ -107,11 +110,88 @@ func (g *GoPro) SetShutter(on bool) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to request")
 	}
+
+	expectedRespPayload := makeTlvResp(cmdSetShutter, cmdRespSuccess, nil)
 	if bytes.Compare(resp, expectedRespPayload) != 0 {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
 	return nil
+}
+
+// Sleep puts the camera into sleep mode.
+func (g *GoPro) Sleep() error {
+	reqPayload := makeTlvCmd(cmdSleep)
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	expectedRespPayload := makeTlvResp(cmdSleep, cmdRespSuccess, nil)
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return nil
+}
+
+// SetTime sets the date and time on the camera.
+func (g *GoPro) SetTime(t time.Time) error {
+	reqPayload, err := makeTlvCmdWithParam(cmdSetDateTime, time2Bytes(t))
+	if err != nil {
+		return errors.Wrap(err, "failed to make tlv")
+	}
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	expectedRespPayload := makeTlvResp(cmdSetDateTime, cmdRespSuccess, nil)
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return nil
+}
+
+// GetTime gets the date and time on the camera.
+func (g *GoPro) GetTime() (time.Time, error) {
+	reqPayload := makeTlvCmd(cmdGetDateTime)
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "failed to request")
+	}
+
+	if len(resp) != 11 {
+		return time.Time{}, fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	if resp[0] != cmdGetDateTime || resp[1] != cmdRespSuccess {
+		return time.Time{}, fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	// parsing resp.
+	t, err := bytes2Time(resp[3:])
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "failed to parse time")
+	}
+
+	return t, nil
 }
 
 func (g *GoPro) doRequest(
