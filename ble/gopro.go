@@ -70,11 +70,20 @@ func (g *GoPro) Close() error {
 }
 
 func (g *GoPro) KeepAlive() error {
-	return g.writePayload(
+	reqPayload := []byte{0x5b, 0x01, 0x42}
+	respPayload := []byte{0x5b, 0x00}
+	resp, err := g.doRequest(
 		Setting, SettingResponse,
-		[]byte{0x5b, 0x01, 0x42}, []byte{0x5b, 0x00},
+		reqPayload,
 		5*time.Second,
 	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+	if bytes.Compare(resp, respPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+	return nil
 }
 
 func (g *GoPro) SetShutter(on bool) error {
@@ -90,41 +99,49 @@ func (g *GoPro) SetShutter(on bool) error {
 	}
 	expectedRespPayload := makeTlvResp(cmdSetShutter, cmdRespSuccess, nil)
 
-	return g.writePayload(
+	resp, err := g.doRequest(
 		Command, CommandResponse,
-		reqPayload, expectedRespPayload,
+		reqPayload,
 		5*time.Second,
 	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return nil
 }
 
-func (g *GoPro) writePayload(
+func (g *GoPro) doRequest(
 	reqC, respC Characteristic,
-	reqPayload, expectedRespPayload []byte,
+	reqPayload []byte,
 	timeout time.Duration,
-) error {
+) ([]byte, error) {
 	chrReq, err := g.getChr(reqC)
 	if err != nil {
-		return errors.Wrap(err, "failed to get chr")
+		return nil, errors.Wrap(err, "failed to get chr")
 	}
 	chrResp, err := g.getChr(respC)
 	if err != nil {
-		return errors.Wrap(err, "failed to get chr")
+		return nil, errors.Wrap(err, "failed to get chr")
 	}
 
-	doneCh := make(chan error)
+	errCh := make(chan error)
+	defer close(errCh)
+	respCh := make(chan []byte)
+	defer close(respCh)
+
 	pr, pw := io.Pipe()
 	go func() {
 		defer pw.Close()
 		resp, err := readPackets(pr)
 		if err != nil {
-			doneCh <- errors.Wrap(err, "failed to read packets")
+			errCh <- errors.Wrap(err, "failed to read packets")
 			return
 		}
-		if bytes.Compare(resp, expectedRespPayload) != 0 {
-			doneCh <- fmt.Errorf("unexpected response: %x", resp)
-			return
-		}
-		doneCh <- nil
+		respCh <- resp
 	}()
 
 	notiHandler := func(req []byte) {
@@ -132,31 +149,33 @@ func (g *GoPro) writePayload(
 	}
 	err = g.cln.Subscribe(chrResp, false, notiHandler)
 	if err != nil {
-		return errors.Wrap(err, "failed to subscribe to chr")
+		return nil, errors.Wrap(err, "failed to subscribe to chr")
 	}
 	defer g.cln.Unsubscribe(chrResp, false)
 
 	pkts, err := makePackets(reqPayload)
 	if err != nil {
-		return errors.Wrap(err, "failed to make packets")
+		return nil, errors.Wrap(err, "failed to make packets")
 	}
 	for _, p := range pkts {
 		err = g.cln.WriteCharacteristic(chrReq, p, false)
 		if err != nil {
-			return errors.Wrap(err, "failed to write chr")
+			return nil, errors.Wrap(err, "failed to write chr")
 		}
 		// time.Sleep(100 * time.Millisecond)
 	}
 
 	select {
-	case err := <-doneCh:
+	case err := <-errCh:
 		if err != nil {
-			return errors.Wrap(err, "failed to receive notification")
+			return nil, errors.Wrap(err, "failed to receive notification")
 		}
 	case <-time.After(timeout):
-		return errors.New("timeout")
+		return nil, errors.New("timeout")
+	case resp := <-respCh:
+		return resp, nil
 	}
-	return nil
+	return nil, errors.New("unreachable")
 }
 
 func (g *GoPro) getChr(c Characteristic) (*goble.Characteristic, error) {
