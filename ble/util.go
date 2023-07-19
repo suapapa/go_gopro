@@ -1,6 +1,7 @@
 package ble
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 )
@@ -35,4 +36,21 @@ func bytes2Time(b []byte) (time.Time, error) {
 	s := int(b[6])
 
 	return time.Date(year, time.Month(month), day, h, m, s, 0, time.Local), nil
+}
+
+// parseBytesStr parses a string of bytes in following form into a byte array.
+// 20:15:F1:79:0A:03:78:78:78:10:01:18:07:38:7B:40:95:06:48:C8:80:03:50:00
+func parseBytesStr(s string) []byte {
+	hex2int := func(s string) int {
+		i, err := hex.DecodeString(s)
+		if err != nil {
+			panic(err)
+		}
+		return int(i[0])
+	}
+	var ret []byte
+	for i := 0; i < len(s); i += 3 {
+		ret = append(ret, byte(hex2int(s[i:i+2])))
+	}
+	return ret
 }

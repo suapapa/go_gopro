@@ -10,6 +10,8 @@ import (
 
 	goble "github.com/go-ble/ble"
 	"github.com/pkg/errors"
+	"github.com/suapapa/go_gopro/open_gopro"
+	"google.golang.org/protobuf/proto"
 )
 
 type GoPro struct {
@@ -192,6 +194,49 @@ func (g *GoPro) GetTime() (time.Time, error) {
 	}
 
 	return t, nil
+}
+
+/*
+func (g *GoPro) SetLocalTime(t time.Time, loc time.Location) error {
+	// TBU
+}
+
+func (g *GoPro) GetLocalTime() (time.Time, error) {
+	// TBU
+}
+*/
+
+func (g *GoPro) SetLivestreamMode(mode *open_gopro.RequestSetLiveStreamMode) error {
+	pbPayload, err := proto.Marshal(mode)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal")
+	}
+	reqPayload := append([]byte{featureCommand, actionSetLiveStream}, pbPayload...)
+
+	pbResp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	if pbResp[0] != featureCommand || pbResp[1] != responseSetLiveStream {
+		return fmt.Errorf("unexpected response, %x", pbResp)
+	}
+
+	resp := &open_gopro.ResponseGeneric{}
+	err = proto.Unmarshal(pbResp[2:], resp)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal")
+	}
+
+	if resp.GetResult() != open_gopro.EnumResultGeneric_RESULT_SUCCESS {
+		return fmt.Errorf("failed to set live stream mode, %s", resp)
+	}
+
+	return nil
 }
 
 func (g *GoPro) doRequest(
