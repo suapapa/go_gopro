@@ -206,6 +206,7 @@ func (g *GoPro) GetLocalTime() (time.Time, error) {
 }
 */
 
+// SetLivestreamMode sets the live stream mode.
 func (g *GoPro) SetLivestreamMode(mode *open_gopro.RequestSetLiveStreamMode) error {
 	pbPayload, err := proto.Marshal(mode)
 	if err != nil {
@@ -234,6 +235,57 @@ func (g *GoPro) SetLivestreamMode(mode *open_gopro.RequestSetLiveStreamMode) err
 
 	if resp.GetResult() != open_gopro.EnumResultGeneric_RESULT_SUCCESS {
 		return fmt.Errorf("failed to set live stream mode, %s", resp)
+	}
+
+	return nil
+}
+
+// ApContol turn on or off AP mode
+func (g *GoPro) ApControl(on bool) error {
+	var param []byte
+	if on {
+		param = []byte{0x01}
+	} else {
+		param = []byte{0x00}
+	}
+	reqPayload, err := makeTlvCmdWithParam(cmdApControl, param)
+	if err != nil {
+		return errors.Wrap(err, "failed to make tlv")
+	}
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	expectedRespPayload := makeTlvResp(cmdApControl, cmdRespSuccess, nil)
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return nil
+}
+
+// MediaHiLightMoment highlights moment during encoding
+func (g *GoPro) MediaHiLightMoment() error {
+	request := makeTlvCmd(cmdMediaHiLightMoment)
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		request,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	expectedRespPayload := makeTlvResp(cmdMediaHiLightMoment, cmdRespSuccess, nil)
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
 	return nil
