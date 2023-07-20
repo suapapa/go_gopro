@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 	"time"
 
 	goble "github.com/go-ble/ble"
@@ -392,6 +393,72 @@ func (g *GoPro) PresetLoad(id uint32) error {
 	}
 
 	return nil
+}
+
+// Analytics sets third party client
+func (g *GoPro) Analytics() error {
+	reqPayload := makeTlvCmd(cmdAnalytics)
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	expectedRespPayload := makeTlvResp(cmdAnalytics, cmdRespSuccess, nil)
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return nil
+}
+
+// GetVersion returns the version of the camera.
+// in form of major.minor
+func (g *GoPro) GetVersion() (string, error) {
+	request := makeTlvCmd(cmdOpenGoPro)
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		request,
+		5*time.Second,
+	)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to request")
+	}
+
+	if len(resp) < 3 {
+		return "", fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	if resp[0] != cmdOpenGoPro || resp[1] != cmdRespSuccess {
+		return "", fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	verStr, err := parseVersion(resp[2:])
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse version")
+	}
+
+	return verStr, nil
+}
+
+func parseVersion(b []byte) (string, error) {
+	majorLen := int(b[0])
+	major, err := strconv.Atoi(string(b[1 : 1+majorLen]))
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse major")
+	}
+	b = b[1+majorLen:]
+	minorLen := int(b[0])
+	minor, err := strconv.Atoi(string(b[1 : 1+minorLen]))
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse minor")
+	}
+	return fmt.Sprintf("%d.%d", major, minor), nil
 }
 
 // GetHardwareInfo gets the hardware info of the camera.
