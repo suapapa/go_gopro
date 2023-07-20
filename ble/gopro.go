@@ -291,6 +291,65 @@ func (g *GoPro) MediaHiLightMoment() error {
 	return nil
 }
 
+type HardwareInfo struct {
+	ModelID         string
+	Name            string
+	BoardType       string
+	FirmwareVersion string
+	SerialNumber    string
+	ApSSID          string
+	ApMAC           string
+}
+
+func parseHardwareInfo(b []byte) *HardwareInfo {
+	ret := &HardwareInfo{}
+	modelIDLen := int(b[0])
+	ret.ModelID = string(b[1 : 1+modelIDLen])
+	b = b[1+modelIDLen:]
+	nameLen := int(b[0])
+	ret.Name = string(b[1 : 1+nameLen])
+	b = b[1+nameLen:]
+	boardTypeLen := int(b[0])
+	ret.BoardType = string(b[1 : 1+boardTypeLen])
+	b = b[1+boardTypeLen:]
+	firmwareVersionLen := int(b[0])
+	ret.FirmwareVersion = string(b[1 : 1+firmwareVersionLen])
+	b = b[1+firmwareVersionLen:]
+	serialNumberLen := int(b[0])
+	ret.SerialNumber = string(b[1 : 1+serialNumberLen])
+	b = b[1+serialNumberLen:]
+	apSSIDLen := int(b[0])
+	ret.ApSSID = string(b[1 : 1+apSSIDLen])
+	b = b[1+apSSIDLen:]
+	apMACLen := int(b[0])
+	ret.ApMAC = string(b[1 : 1+apMACLen])
+	return ret
+}
+
+// GetHardwareInfo gets the hardware info of the camera.
+func (g *GoPro) GetHardwareInfo() (*HardwareInfo, error) {
+	request := makeTlvCmd(cmdGetHardwareInfo)
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		request,
+		5*time.Second,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to request")
+	}
+
+	if len(resp) < 3 {
+		return nil, fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	if resp[0] != cmdGetHardwareInfo || resp[1] != cmdRespSuccess {
+		return nil, fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return parseHardwareInfo(resp[2:]), nil
+}
+
 func (g *GoPro) doRequest(
 	reqC, respC Characteristic,
 	reqPayload []byte,
