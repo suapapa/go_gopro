@@ -38,6 +38,12 @@ func bytes2Time(b []byte) (time.Time, error) {
 	return time.Date(year, time.Month(month), day, h, m, s, 0, time.Local), nil
 }
 
+func uint32ToBytes(i uint32) []byte {
+	return []byte{
+		byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i),
+	}
+}
+
 // parseBytesStr parses a string of bytes in following form into a byte array.
 // 20:15:F1:79:0A:03:78:78:78:10:01:18:07:38:7B:40:95:06:48:C8:80:03:50:00
 func parseBytesStr(s string) []byte {

@@ -326,6 +326,74 @@ func parseHardwareInfo(b []byte) *HardwareInfo {
 	return ret
 }
 
+type Preset byte
+
+const (
+	PresetVideo Preset = iota
+	PresetPhoto
+	PresetTimelapse
+)
+
+// PresetLoadGroup loads a preset group.
+func (g *GoPro) PresetLoadGroup(p Preset) error {
+	var param []byte
+	switch p {
+	case PresetVideo:
+		param = []byte{0x03, 0xE8}
+	case PresetPhoto:
+		param = []byte{0x03, 0xE9}
+	case PresetTimelapse:
+		param = []byte{0x03, 0xEA}
+	default:
+		return fmt.Errorf("invalid preset, %d", p)
+	}
+	reqPayload, err := makeTlvCmdWithParam(cmdPresetLoadGroup, param)
+	if err != nil {
+		return errors.Wrap(err, "failed to make tlv")
+	}
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	expectedRespPayload := makeTlvResp(cmdPresetLoadGroup, cmdRespSuccess, nil)
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return nil
+}
+
+// PresetLoad loads a preset with ID.
+func (g *GoPro) PresetLoad(id uint32) error {
+	param := uint32ToBytes(id)
+	reqPayload, err := makeTlvCmdWithParam(cmdPresetLoad, param)
+	if err != nil {
+		return errors.Wrap(err, "failed to make tlv")
+	}
+
+	resp, err := g.doRequest(
+		Command, CommandResponse,
+		reqPayload,
+		5*time.Second,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to request")
+	}
+
+	expectedRespPayload := makeTlvResp(cmdPresetLoad, cmdRespSuccess, nil)
+	if bytes.Compare(resp, expectedRespPayload) != 0 {
+		return fmt.Errorf("unexpected response, %x", resp)
+	}
+
+	return nil
+}
+
 // GetHardwareInfo gets the hardware info of the camera.
 func (g *GoPro) GetHardwareInfo() (*HardwareInfo, error) {
 	request := makeTlvCmd(cmdGetHardwareInfo)
