@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 type GoPro struct {
 	cln goble.Client
 	p   *goble.Profile
-	chs map[Characteristic]*goble.Characteristic
 }
 
 func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
@@ -33,7 +31,6 @@ func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
 	filter := func(a goble.Advertisement) bool {
 		svcs := a.Services()
 		for _, svc := range svcs {
-			log.Println(svc)
 			if svc.Equal(svcUUIDControlAndQuery) {
 				return true
 			}
@@ -54,7 +51,7 @@ func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
 	ret := &GoPro{
 		cln: cln,
 		p:   p,
-		chs: makeCharacteristicMap(p),
+		// chs: makeCharacteristicMap(p),
 	}
 
 	return ret, nil
@@ -70,6 +67,11 @@ func (g *GoPro) Close() error {
 	<-exitC
 
 	return nil
+}
+
+func (g *GoPro) String() string {
+	// return fmt.Sprintf("GoPro %s", g.cln.Addr())
+	return explore(g.cln, g.p)
 }
 
 // KeepAlive sends a keep alive message to the GoPro.
@@ -486,15 +488,15 @@ func (g *GoPro) GetHardwareInfo() (*HardwareInfo, error) {
 }
 
 func (g *GoPro) doRequest(
-	reqC, respC Characteristic,
+	reqC, respC uuid,
 	reqPayload []byte,
 	timeout time.Duration,
 ) ([]byte, error) {
-	chrReq, err := g.getChr(reqC)
+	chrReq, err := g.getChrByGpUUID(reqC)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get chr")
 	}
-	chrResp, err := g.getChr(respC)
+	chrResp, err := g.getChrByGpUUID(respC)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get chr")
 	}
@@ -518,6 +520,11 @@ func (g *GoPro) doRequest(
 	notiHandler := func(req []byte) {
 		pw.Write(req)
 	}
+	err = g.cln.ClearSubscriptions()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to clear subscriptions")
+	}
+
 	err = g.cln.Subscribe(chrResp, false, notiHandler)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to subscribe to chr")
@@ -549,10 +556,13 @@ func (g *GoPro) doRequest(
 	return nil, errors.New("unreachable")
 }
 
-func (g *GoPro) getChr(c Characteristic) (*goble.Characteristic, error) {
-	ch, ok := g.chs[c]
-	if !ok {
-		return nil, fmt.Errorf("chr %s not found", c)
+func (g *GoPro) getChrByGpUUID(id uuid) (*goble.Characteristic, error) {
+	chr := &goble.Characteristic{
+		UUID: gpUUID(id),
 	}
-	return ch, nil
+	ret := g.p.FindCharacteristic(chr)
+	if ret == nil {
+		return nil, fmt.Errorf("chr %s not found", id)
+	}
+	return ret, nil
 }

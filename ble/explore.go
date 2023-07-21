@@ -1,6 +1,13 @@
 package ble
 
-/*
+import (
+	"fmt"
+	"log"
+	"time"
+
+	goble "github.com/go-ble/ble"
+)
+
 func explore(cln goble.Client, p *goble.Profile) string {
 	var ret string
 	for _, s := range p.Services {
@@ -93,4 +100,3 @@ func propString(p goble.Property) string {
 	}
 	return s
 }
-*/
