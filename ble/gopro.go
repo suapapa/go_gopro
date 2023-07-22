@@ -2,62 +2,77 @@ package ble
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"strconv"
 	"time"
 
 	goble "github.com/go-ble/ble"
+	"github.com/muka/go-bluetooth/api"
+	"github.com/muka/go-bluetooth/bluez/profile/adapter"
+	"github.com/muka/go-bluetooth/bluez/profile/device"
 	"github.com/pkg/errors"
 	"github.com/suapapa/go_gopro/open_gopro"
 	"google.golang.org/protobuf/proto"
 )
 
 type GoPro struct {
+	adt *adapter.Adapter1
+	dev *device.Device1
+
 	cln goble.Client
 	p   *goble.Profile
 }
 
-func ScanGoPro(opts ...goble.Option) (*GoPro, error) {
-	dev, err := newDevice(opts...)
+func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
+	if adaptorID == "" {
+		adaptorID = adapter.GetDefaultAdapterID()
+	}
+	adt, err := adapter.GetAdapter(adaptorID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create new device")
+		return nil, errors.Wrap(err, "failed to get adaptor")
 	}
 
-	goble.SetDefaultDevice(dev)
-
-	ctx := goble.WithSigHandler(context.WithTimeout(context.Background(), 10*time.Second))
-	filter := func(a goble.Advertisement) bool {
-		svcs := a.Services()
-		for _, svc := range svcs {
-			if svc.Equal(svcUUIDControlAndQuery) {
-				return true
-			}
-		}
-		return false
+	filter := &adapter.DiscoveryFilter{
+		UUIDs: []string{svcUUIDControlAndQuery},
 	}
-
-	cln, err := goble.Connect(ctx, filter)
+	_, cancelDiscoved, err := api.Discover(adt, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to connect to GoPro")
+		return nil, errors.Wrap(err, "failed to discover")
+	}
+	select {
+	// case dev := <-chDeviceDiscovered:
+	// 	gp := &GoPro{
+	// 		adt: adt,
+	// 		dev: dev.Path,
+	// 	}
+	case <-time.After(tmo):
+		cancelDiscoved()
 	}
 
-	p, err := cln.DiscoverProfile(true)
+	ret := []*GoPro{}
+	devs, err := adt.GetDevices()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to discover profile")
+		return nil, errors.Wrap(err, "failed to get devices")
 	}
 
-	ret := &GoPro{
-		cln: cln,
-		p:   p,
-		// chs: makeCharacteristicMap(p),
+	for _, dev := range devs {
+		ret = append(ret, &GoPro{
+			adt: adt,
+			dev: dev,
+		})
+	}
+
+	if len(ret) == 0 {
+		return nil, errors.New("no GoPro found")
 	}
 
 	return ret, nil
 }
 
 func (g *GoPro) Close() error {
+	g.adt.Close()
+
 	// Unsubscribe from notifications
 	exitC := g.cln.Disconnected()
 	err := g.cln.CancelConnection()
@@ -70,8 +85,7 @@ func (g *GoPro) Close() error {
 }
 
 func (g *GoPro) String() string {
-	// return fmt.Sprintf("GoPro %s", g.cln.Addr())
-	return explore(g.cln, g.p)
+	return fmt.Sprintf("%s: %s - %s", g.adt.Interface(), g.dev.Properties.Name, g.dev.Properties.Address)
 }
 
 // KeepAlive sends a keep alive message to the GoPro.

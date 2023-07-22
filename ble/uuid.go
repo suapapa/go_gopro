@@ -36,7 +36,7 @@ var (
 	// chrNetworkManagementCommand  = gpUUID(NetworkManagementCommand)  // Write
 	// chrNetworkManagementResponse = gpUUID(NetworkManagementResponse) // Notify
 
-	svcUUIDControlAndQuery = goble.UUID16(0xFEA6)
+	svcUUIDControlAndQuery = "FEA6"
 	// chrCommand             = gpUUID(Command)         // Write
 	// chrCommandResponse     = gpUUID(CommandResponse) // Notify
 	// chrSetting             = gpUUID(Setting)         // Write

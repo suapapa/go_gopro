@@ -1,31 +1,26 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"time"
 
-	"github.com/go-ble/ble"
 	gpble "github.com/suapapa/go_gopro/ble"
 )
 
+var (
+	adtID string
+)
+
 func main() {
-	gp, err := gpble.ScanGoPro(
-		ble.OptDeviceID(0),
-	)
-	if err != nil {
-		panic(err)
-	}
-	defer gp.Close()
+	flag.StringVar(&adtID, "a", "hci0", "bluetooth adapter")
 
-	fmt.Printf("GoPro found: %s\n", gp)
-
-	err = gp.KeepAlive()
+	gps, err := gpble.ScanGoPro(adtID, time.Second*10)
 	if err != nil {
 		panic(err)
 	}
 
-	hwInfo, err := gp.GetHardwareInfo()
-	if err != nil {
-		panic(err)
+	for _, gp := range gps {
+		fmt.Println(gp)
 	}
-	println(hwInfo)
 }
