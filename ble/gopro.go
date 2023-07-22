@@ -10,6 +10,7 @@ import (
 	goble "github.com/go-ble/ble"
 	"github.com/muka/go-bluetooth/api"
 	"github.com/muka/go-bluetooth/bluez/profile/adapter"
+	"github.com/muka/go-bluetooth/bluez/profile/agent"
 	"github.com/muka/go-bluetooth/bluez/profile/device"
 	"github.com/pkg/errors"
 	"github.com/suapapa/go_gopro/open_gopro"
@@ -17,6 +18,7 @@ import (
 )
 
 type GoPro struct {
+	ag  *agent.SimpleAgent
 	adt *adapter.Adapter1
 	dev *device.Device1
 
@@ -25,6 +27,11 @@ type GoPro struct {
 }
 
 func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
+	ag, err := getAgent()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get agent")
+	}
+
 	if adaptorID == "" {
 		adaptorID = adapter.GetDefaultAdapterID()
 	}
@@ -34,7 +41,8 @@ func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
 	}
 
 	filter := &adapter.DiscoveryFilter{
-		UUIDs: []string{svcUUIDControlAndQuery},
+		UUIDs:     []string{svcUUIDControlAndQuery},
+		Transport: "le",
 	}
 	_, cancelDiscoved, err := api.Discover(adt, filter)
 	if err != nil {
@@ -58,6 +66,7 @@ func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
 
 	for _, dev := range devs {
 		ret = append(ret, &GoPro{
+			ag:  ag,
 			adt: adt,
 			dev: dev,
 		})
@@ -68,6 +77,33 @@ func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
 	}
 
 	return ret, nil
+}
+
+func (g *GoPro) Connect() error {
+	err := g.dev.Pair()
+	if err != nil {
+		return errors.Wrap(err, "failed to pair")
+	}
+
+	adtID, err := g.adt.GetAdapterID()
+	if err != nil {
+		return errors.Wrap(err, "failed to get adapter id")
+	}
+	err = agent.SetTrusted(adtID, g.dev.Path())
+	if err != nil {
+		return errors.Wrap(err, "failed to set trusted")
+	}
+
+	err = g.dev.Connect()
+	if err != nil {
+		return errors.Wrap(err, "failed to connect")
+	}
+
+	// TBU
+	// g.dev.Client().GetDbusObject().Path()
+	// objectPath: [variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/serviceXX/charYYYY
+
+	return nil
 }
 
 func (g *GoPro) Close() error {
@@ -85,7 +121,11 @@ func (g *GoPro) Close() error {
 }
 
 func (g *GoPro) String() string {
-	return fmt.Sprintf("%s: %s - %s", g.adt.Interface(), g.dev.Properties.Name, g.dev.Properties.Address)
+	return fmt.Sprintf("%s: %s - %s (%s)", g.adt.Interface(),
+		g.dev.Properties.Name,
+		g.dev.Properties.Address,
+		g.dev.Client().GetDbusObject().Path(),
+	)
 }
 
 // KeepAlive sends a keep alive message to the GoPro.

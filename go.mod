@@ -6,6 +6,7 @@ require github.com/pkg/errors v0.9.1
 
 require (
 	github.com/go-ble/ble v0.0.0-20230130210458-dd4b07d15402
+	github.com/godbus/dbus/v5 v5.0.3
 	github.com/muka/go-bluetooth v0.0.0-20221213043340-85dc80edc4e1
 	google.golang.org/protobuf v1.31.0
 )
@@ -13,7 +14,6 @@ require (
 require (
 	github.com/JuulLabs-OSS/cbgo v0.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/godbus/dbus/v5 v5.0.3 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
