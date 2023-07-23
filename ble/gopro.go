@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	goble "github.com/go-ble/ble"
 	"github.com/muka/go-bluetooth/api"
 	"github.com/muka/go-bluetooth/bluez/profile/adapter"
 	"github.com/muka/go-bluetooth/bluez/profile/agent"
 	"github.com/muka/go-bluetooth/bluez/profile/device"
+	"github.com/muka/go-bluetooth/bluez/profile/gatt"
 	"github.com/pkg/errors"
 	"github.com/suapapa/go_gopro/open_gopro"
 	"google.golang.org/protobuf/proto"
@@ -22,8 +22,8 @@ type GoPro struct {
 	adt *adapter.Adapter1
 	dev *device.Device1
 
-	cln goble.Client
-	p   *goble.Profile
+	// cln goble.Client
+	// p   *goble.Profile
 }
 
 func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
@@ -108,14 +108,15 @@ func (g *GoPro) Connect() error {
 
 func (g *GoPro) Close() error {
 	g.adt.Close()
+	g.dev.Close()
 
 	// Unsubscribe from notifications
-	exitC := g.cln.Disconnected()
-	err := g.cln.CancelConnection()
-	if err != nil {
-		return errors.Wrap(err, "failed to cancel connection")
-	}
-	<-exitC
+	// exitC := g.cln.Disconnected()
+	// err := g.cln.CancelConnection()
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to cancel connection")
+	// }
+	// <-exitC
 
 	return nil
 }
@@ -571,30 +572,38 @@ func (g *GoPro) doRequest(
 		respCh <- resp
 	}()
 
-	notiHandler := func(req []byte) {
-		pw.Write(req)
-	}
-	err = g.cln.ClearSubscriptions()
+	/*
+		notiHandler := func(req []byte) {
+			pw.Write(req)
+		}
+	*/
+
+	pCh, err := chrResp.WatchProperties()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to clear subscriptions")
+		return nil, errors.Wrap(err, "failed to watch properties")
 	}
 
-	err = g.cln.Subscribe(chrResp, false, notiHandler)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to subscribe to chr")
-	}
-	defer g.cln.Unsubscribe(chrResp, false)
+	go func() {
+		for p := range pCh {
+			if p == nil {
+				return
+			}
+			b := p.Value.([]byte)
+			pw.Write(b)
+		}
+	}()
+
+	defer chrResp.StopNotify()
 
 	pkts, err := makePackets(reqPayload)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make packets")
 	}
 	for _, p := range pkts {
-		err = g.cln.WriteCharacteristic(chrReq, p, false)
+		err := chrReq.WriteValue(p, map[string]interface{}{})
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to write chr")
 		}
-		// time.Sleep(100 * time.Millisecond)
 	}
 
 	select {
@@ -607,16 +616,19 @@ func (g *GoPro) doRequest(
 	case resp := <-respCh:
 		return resp, nil
 	}
+
 	return nil, errors.New("unreachable")
 }
 
-func (g *GoPro) getChrByGpUUID(id uuid) (*goble.Characteristic, error) {
-	chr := &goble.Characteristic{
-		UUID: gpUUID(id),
-	}
-	ret := g.p.FindCharacteristic(chr)
-	if ret == nil {
-		return nil, fmt.Errorf("chr %s not found", id)
-	}
-	return ret, nil
+func (g *GoPro) getChrByGpUUID(id uuid) (*gatt.GattCharacteristic1, error) {
+	// chr := &goble.Characteristic{
+	// 	UUID: gpUUID(id),
+	// }
+	// ret := g.p.FindCharacteristic(chr)
+	// if ret == nil {
+	// 	return nil, fmt.Errorf("chr %s not found", id)
+	// }
+	// return ret, nil
+
+	return g.dev.GetCharByUUID(gpUUID(id))
 }

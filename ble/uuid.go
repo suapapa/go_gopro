@@ -3,8 +3,6 @@ package ble
 import (
 	"fmt"
 	"strings"
-
-	goble "github.com/go-ble/ble"
 )
 
 type uuid string
@@ -26,26 +24,27 @@ const (
 
 var (
 	// services and characteristics
-	// svcGoProWifiAccessPoint    = gpUUID("GP-0001")
-	// chrWifiAccessPointSSID     = gpUUID(WifiAccessPointSSID)     // Read / Write
-	// chrWifiAccessPointPassword = gpUUID(WifiAccessPointPassword) // Read / Write
-	// chrWifiAccessPointPower    = gpUUID(WifiAccessPointPower)    // Write
-	// chrWifiAccessPointState    = gpUUID(WifiAccessPointState)    // Read / Indicate
+	svcUUIDGoProWifiAccessPoint    = gpUUID("GP-0001")
+	chrUUIDWifiAccessPointSSID     = gpUUID(WifiAccessPointSSID)     // Read / Write
+	chrUUIDWifiAccessPointPassword = gpUUID(WifiAccessPointPassword) // Read / Write
+	chrUUIDWifiAccessPointPower    = gpUUID(WifiAccessPointPower)    // Write
+	chrUUIDWifiAccessPointState    = gpUUID(WifiAccessPointState)    // Read / Indicate
 
-	// svcGoProCamaraManagement     = gpUUID("GP-0090")
-	// chrNetworkManagementCommand  = gpUUID(NetworkManagementCommand)  // Write
-	// chrNetworkManagementResponse = gpUUID(NetworkManagementResponse) // Notify
+	svcGoProCamaraManagement         = gpUUID("GP-0090")
+	chrUUIDNetworkManagementCommand  = gpUUID(NetworkManagementCommand)  // Write
+	chrUUIDNetworkManagementResponse = gpUUID(NetworkManagementResponse) // Notify
 
 	svcUUIDControlAndQuery = "FEA6"
-	// chrCommand             = gpUUID(Command)         // Write
-	// chrCommandResponse     = gpUUID(CommandResponse) // Notify
-	// chrSetting             = gpUUID(Setting)         // Write
-	// chrSettingResponse     = gpUUID(SettingResponse) // Notify
-	// chrQuery               = gpUUID(Query)           // Write
-	// chrQueryResponse       = gpUUID(QueryResponse)   // Notify
+	chrUUIDCommand         = gpUUID(Command)         // Write
+	chrUUIDCommandResponse = gpUUID(CommandResponse) // Notify
+	chrUUIDSetting         = gpUUID(Setting)         // Write
+	chrUUIDSettingResponse = gpUUID(SettingResponse) // Notify
+	chrUUIDQuery           = gpUUID(Query)           // Write
+	chrUUIDQueryResponse   = gpUUID(QueryResponse)   // Notify
 )
 
-func gpUUID(id uuid) goble.UUID {
+func gpUUID(id uuid) string {
 	uuidStr := strings.Replace(string(id), "GP-", "", -1)
-	return goble.MustParse(fmt.Sprintf("b5f9%s-aa8d-11e3-9046-0002a5d5c51b", uuidStr))
+	// return goble.MustParse(fmt.Sprintf("b5f9%s-aa8d-11e3-9046-0002a5d5c51b", uuidStr))
+	return fmt.Sprintf("b5f9%s-aa8d-11e3-9046-0002a5d5c51b", uuidStr)
 }
