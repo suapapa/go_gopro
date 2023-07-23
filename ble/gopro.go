@@ -107,8 +107,8 @@ func (g *GoPro) Connect() error {
 }
 
 func (g *GoPro) Close() error {
-	g.adt.Close()
 	g.dev.Close()
+	g.adt.Close()
 
 	// Unsubscribe from notifications
 	// exitC := g.cln.Disconnected()

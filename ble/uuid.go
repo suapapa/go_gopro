@@ -46,5 +46,6 @@ var (
 func gpUUID(id uuid) string {
 	uuidStr := strings.Replace(string(id), "GP-", "", -1)
 	// return goble.MustParse(fmt.Sprintf("b5f9%s-aa8d-11e3-9046-0002a5d5c51b", uuidStr))
-	return fmt.Sprintf("b5f9%s-aa8d-11e3-9046-0002a5d5c51b", uuidStr)
+	ret := fmt.Sprintf("b5f9%s-aa8d-11e3-9046-0002a5d5c51b", uuidStr)
+	return strings.ReplaceAll(ret, "-", "")
 }
