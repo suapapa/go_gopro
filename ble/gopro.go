@@ -160,7 +160,7 @@ func (g *GoPro) KeepAlive() error {
 	}
 
 	expectedRespPayload := []byte{0x5b, 0x00}
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 	return nil
@@ -189,7 +189,7 @@ func (g *GoPro) SetShutter(on bool) error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdSetShutter, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
@@ -210,7 +210,7 @@ func (g *GoPro) Sleep() error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdSleep, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
@@ -234,7 +234,7 @@ func (g *GoPro) SetTime(t time.Time) error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdSetDateTime, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
@@ -338,7 +338,7 @@ func (g *GoPro) ApControl(on bool) error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdApControl, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
@@ -359,7 +359,7 @@ func (g *GoPro) MediaHiLightMoment() error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdMediaHiLightMoment, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
@@ -437,7 +437,7 @@ func (g *GoPro) PresetLoadGroup(p Preset) error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdPresetLoadGroup, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
@@ -483,7 +483,7 @@ func (g *GoPro) Analytics() error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdAnalytics, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 

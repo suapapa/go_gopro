@@ -24,23 +24,27 @@ const (
 
 var (
 	// services and characteristics
-	svcUUIDGoProWifiAccessPoint    = gpUUID("GP-0001")
-	chrUUIDWifiAccessPointSSID     = gpUUID(WifiAccessPointSSID)     // Read / Write
-	chrUUIDWifiAccessPointPassword = gpUUID(WifiAccessPointPassword) // Read / Write
-	chrUUIDWifiAccessPointPower    = gpUUID(WifiAccessPointPower)    // Write
-	chrUUIDWifiAccessPointState    = gpUUID(WifiAccessPointState)    // Read / Indicate
+	/*
+		svcUUIDGoProWifiAccessPoint    = gpUUID("GP-0001")
+		chrUUIDWifiAccessPointSSID     = gpUUID(WifiAccessPointSSID)     // Read / Write
+		chrUUIDWifiAccessPointPassword = gpUUID(WifiAccessPointPassword) // Read / Write
+		chrUUIDWifiAccessPointPower    = gpUUID(WifiAccessPointPower)    // Write
+		chrUUIDWifiAccessPointState    = gpUUID(WifiAccessPointState)    // Read / Indicate
 
-	svcGoProCamaraManagement         = gpUUID("GP-0090")
-	chrUUIDNetworkManagementCommand  = gpUUID(NetworkManagementCommand)  // Write
-	chrUUIDNetworkManagementResponse = gpUUID(NetworkManagementResponse) // Notify
+		svcGoProCamaraManagement         = gpUUID("GP-0090")
+		chrUUIDNetworkManagementCommand  = gpUUID(NetworkManagementCommand)  // Write
+		chrUUIDNetworkManagementResponse = gpUUID(NetworkManagementResponse) // Notify
+	*/
 
 	svcUUIDControlAndQuery = "FEA6"
-	chrUUIDCommand         = gpUUID(Command)         // Write
-	chrUUIDCommandResponse = gpUUID(CommandResponse) // Notify
-	chrUUIDSetting         = gpUUID(Setting)         // Write
-	chrUUIDSettingResponse = gpUUID(SettingResponse) // Notify
-	chrUUIDQuery           = gpUUID(Query)           // Write
-	chrUUIDQueryResponse   = gpUUID(QueryResponse)   // Notify
+	/*
+		chrUUIDCommand         = gpUUID(Command)         // Write
+		chrUUIDCommandResponse = gpUUID(CommandResponse) // Notify
+		chrUUIDSetting         = gpUUID(Setting)         // Write
+		chrUUIDSettingResponse = gpUUID(SettingResponse) // Notify
+		chrUUIDQuery           = gpUUID(Query)           // Write
+		chrUUIDQueryResponse   = gpUUID(QueryResponse)   // Notify
+	*/
 )
 
 func gpUUID(id uuid) string {
