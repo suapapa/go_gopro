@@ -4,6 +4,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
+
+	"github.com/muka/go-bluetooth/bluez/profile/adapter"
+	"github.com/muka/go-bluetooth/bluez/profile/device"
 )
 
 func time2Bytes(t time.Time) []byte {
@@ -58,5 +61,26 @@ func parseBytesStr(s string) []byte {
 	for i := 0; i < len(s); i += 3 {
 		ret = append(ret, byte(hex2int(s[i:i+2])))
 	}
+	return ret
+}
+
+func retrieveServices(a *adapter.Adapter1, dev *device.Device1) string {
+	// log.Debug("Listing exposed services")
+	ret := ""
+
+	list, err := dev.GetAllServicesAndUUID()
+	if err != nil {
+		return ""
+	}
+
+	if len(list) == 0 {
+		time.Sleep(time.Second * 2)
+		return retrieveServices(a, dev)
+	}
+
+	for _, servicePath := range list {
+		ret += fmt.Sprintf("- %s\n", servicePath)
+	}
+
 	return ret
 }

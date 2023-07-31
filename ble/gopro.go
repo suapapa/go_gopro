@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
 	"time"
 
@@ -40,36 +41,37 @@ func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
 		return nil, errors.Wrap(err, "failed to get adaptor")
 	}
 
+	adt.StopDiscovery()
+
 	filter := &adapter.DiscoveryFilter{
 		UUIDs:     []string{svcUUIDControlAndQuery},
 		Transport: "le",
 	}
-	_, cancelDiscoved, err := api.Discover(adt, filter)
+	chDeviceDiscovered, cancelDiscoved, err := api.Discover(adt, filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to discover")
 	}
-	select {
-	// case dev := <-chDeviceDiscovered:
-	// 	gp := &GoPro{
-	// 		adt: adt,
-	// 		dev: dev.Path,
-	// 	}
-	case <-time.After(tmo):
-		cancelDiscoved()
-	}
 
 	ret := []*GoPro{}
-	devs, err := adt.GetDevices()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get devices")
-	}
-
-	for _, dev := range devs {
-		ret = append(ret, &GoPro{
-			ag:  ag,
-			adt: adt,
-			dev: dev,
-		})
+	timer := time.After(tmo)
+loop:
+	for {
+		select {
+		case dev := <-chDeviceDiscovered:
+			log.Println(dev)
+			d, err := device.NewDevice1(dev.Path)
+			ret = append(ret, &GoPro{
+				ag:  ag,
+				adt: adt,
+				dev: d,
+			})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to new device")
+			}
+		case <-timer:
+			cancelDiscoved()
+			break loop
+		}
 	}
 
 	if len(ret) == 0 {
@@ -80,18 +82,29 @@ func ScanGoPro(adaptorID string, tmo time.Duration) ([]*GoPro, error) {
 }
 
 func (g *GoPro) Connect() error {
-	err := g.dev.Pair()
+	props, err := g.dev.GetProperties()
 	if err != nil {
-		return errors.Wrap(err, "failed to pair")
+		return errors.Wrap(err, "failed to get properties")
 	}
 
-	adtID, err := g.adt.GetAdapterID()
-	if err != nil {
-		return errors.Wrap(err, "failed to get adapter id")
+	if props.Connected {
+		return nil
 	}
-	err = agent.SetTrusted(adtID, g.dev.Path())
-	if err != nil {
-		return errors.Wrap(err, "failed to set trusted")
+
+	if !props.Paired || !props.Trusted {
+		err = g.dev.Pair()
+		if err != nil {
+			return errors.Wrap(err, "failed to pair")
+		}
+
+		adtID, err := g.adt.GetAdapterID()
+		if err != nil {
+			return errors.Wrap(err, "failed to get adapter id")
+		}
+		err = agent.SetTrusted(adtID, g.dev.Path())
+		if err != nil {
+			return errors.Wrap(err, "failed to set trusted")
+		}
 	}
 
 	err = g.dev.Connect()
@@ -122,11 +135,15 @@ func (g *GoPro) Close() error {
 }
 
 func (g *GoPro) String() string {
-	return fmt.Sprintf("%s: %s - %s (%s)", g.adt.Interface(),
+	ret := fmt.Sprintf("%s: %s - %s (%s)", g.adt.Interface(),
 		g.dev.Properties.Name,
 		g.dev.Properties.Address,
 		g.dev.Client().GetDbusObject().Path(),
 	)
+
+	ret += retrieveServices(g.adt, g.dev)
+
+	return ret
 }
 
 // KeepAlive sends a keep alive message to the GoPro.
@@ -445,7 +462,7 @@ func (g *GoPro) PresetLoad(id uint32) error {
 	}
 
 	expectedRespPayload := makeTlvResp(cmdPresetLoad, cmdRespSuccess, nil)
-	if bytes.Compare(resp, expectedRespPayload) != 0 {
+	if !bytes.Equal(resp, expectedRespPayload) {
 		return fmt.Errorf("unexpected response, %x", resp)
 	}
 
