@@ -298,6 +298,10 @@ func (g *GoPro) SetLivestreamMode(mode *open_gopro.RequestSetLiveStreamMode) err
 		return errors.Wrap(err, "failed to request")
 	}
 
+	if !isProtobufMsg(pbResp) {
+		return fmt.Errorf("unexpected response, %x", pbResp)
+	}
+
 	if pbResp[0] != featureCommand || pbResp[1] != responseSetLiveStream {
 		return fmt.Errorf("unexpected response, %x", pbResp)
 	}
